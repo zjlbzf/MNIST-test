@@ -1,0 +1,2 @@
+model_checkpoint_path: "g:\\code\\Projects\\AI\\Competation\\Kaggle\\003_MNIST\\model\\lr_5e-05_b1_0.9_b2_0.99_bsize_128-cc52d954-479c-11e9-b1ce-488ad28da3f2\\model.ckpt-0"
+all_model_checkpoint_paths: "g:\\code\\Projects\\AI\\Competation\\Kaggle\\003_MNIST\\model\\lr_5e-05_b1_0.9_b2_0.99_bsize_128-cc52d954-479c-11e9-b1ce-488ad28da3f2\\model.ckpt-0"

@@ -206,6 +206,7 @@ def main(__):
             return train_dataset, val_dataset
         train_dataset, val_dataset = get_train_val_set(train_dev_dataset)
 
+        # 2 转换
         def dataset_map_batch(dataset):
             def decode_train_line(line):
                 # Decode the csv line to tensor
@@ -318,31 +319,36 @@ def main(__):
             # --------[PART 02] build model --------------
             # ----[1]  Forward
 
-            conv1 = tf.layers.conv2d(x, filters=32,
+            conv1 = tf.layers.conv2d(x, filters=6,
                                      kernel_size=[3, 3], padding="same",
-                                     activation=tf.nn.tanh, kernel_initializer=tf.initializers.random_uniform(),
-                                     bias_initializer=tf.initializers.zeros())
+                                     activation=tf.nn.tanh,
+                                     kernel_initializer=tf.glorot_uniform_initializer(),
+                                     bias_initializer=tf.initializers.zeros(),
+                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
 
             pool1 = tf.layers.max_pooling2d(
                 inputs=conv1, pool_size=[2, 2], strides=2)
 
             # with tf.device(next_device()):
 
-            conv2 = tf.layers.conv2d(pool1, filters=64,
-                                     kernel_size=[5, 5], padding="same", activation=tf.nn.tanh, kernel_initializer=tf.initializers.random_uniform(),
-                                     bias_initializer=tf.initializers.zeros())
+            conv2 = tf.layers.conv2d(pool1, filters=16,
+                                     kernel_size=[5, 5], padding="same", activation=tf.nn.tanh, kernel_initializer=tf.glorot_uniform_initializer(),
+                                     bias_initializer=tf.initializers.zeros(),
+                                     kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.1))
 
             pool2 = tf.layers.max_pooling2d(
                 inputs=conv2, pool_size=[2, 2], strides=2)
 
             pool2_flat = tf.layers.flatten(pool2)
             # with tf.device(next_device()):
+            """
 
             dense = tf.layers.dense(
                 inputs=pool2_flat, units=1024, activation=tf.nn.tanh)
+            """
 
             dense = tf.layers.dense(
-                inputs=dense, units=120, activation=tf.nn.tanh)
+                inputs=pool2_flat, units=120, activation=tf.nn.tanh)
 
             logits = tf.layers.dense(inputs=dense, units=10)
             return logits
@@ -369,17 +375,22 @@ def main(__):
         # ----[2].BackProp (loss ,opt )
             loss = tf.nn.softmax_cross_entropy_with_logits_v2(
                 labels=train_y, logits=train_predict_logits, name="haha")
+            l2_loss = tf.losses.get_regularization_loss()
+
+            object_function = loss+l2_loss
 
         # ----[3] Tensorboard---
             with tf.device(next_device()):
                 variable_summaries(loss)
                 variable_summaries(val_accuracy[1])
+                for var in tf.trainable_variables():
+                    tf.summary.histogram(var.name, var)
 
         # --------[PART 03 ] define  OP  --------------
         # with tf.device(next_device()):
             global_steps = tf.train.get_or_create_global_step()
             train_op = tf.train.AdamOptimizer(
-                FLAGS.learning_rate).minimize(loss, global_step=global_steps)
+                FLAGS.learning_rate).minimize(object_function, global_step=global_steps)
 
     # ------------[PART 2] Session Run --------------
     # 1. Define Session
@@ -399,15 +410,17 @@ def main(__):
             epoch = 0
             # chrome_trace
 
-            train = sess.run(train_op, options=options,
+            for step in range(FLAGS.epochs*FLAGS.steps_per_epoch*FLAGS.folds):
+                if step < 10:
+                    sess.run([train_op], options=options,
                              run_metadata=run_metadata)
-            fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-            chrome_trace = fetched_timeline.generate_chrome_trace_format()
-            with open(os.path.join(FLAGS.profile_dir_path, str(datetime.datetime.now().minute) + 'timeline.json'), 'w') as f:
-                f.write(chrome_trace)
-
-            for step in range(1, FLAGS.epochs*FLAGS.steps_per_epoch*FLAGS.folds):
-                sess.run([train_op])
+                    fetched_timeline = timeline.Timeline(
+                        run_metadata.step_stats)
+                    chrome_trace = fetched_timeline.generate_chrome_trace_format()
+                    with open(os.path.join(FLAGS.profile_dir_path, str(datetime.datetime.now().minute) + 'timeline-%s.json' % step), 'w') as f:
+                        f.write(chrome_trace)
+                else:
+                    sess.run([train_op])
                 if step % FLAGS.steps_per_epoch == 0:
                     accuracy = sess.run(train_accuracy)
                     epoch += 1

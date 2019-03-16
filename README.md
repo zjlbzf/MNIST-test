@@ -251,12 +251,11 @@ tf.train.replica_device_setter(
 
 ****
 
-## 3. 数据输入的管理（tf.data）
-两部分组成（使用的时候也分2步）：
-1. 构建数据集
-2. 构建迭代器
-### 3.2 构建迭代器 
-构建怎么样的迭代器？
+## 3. 数据的输入（tf.data）
+
+https://cs230-stanford.github.io/tensorflow-input-data.html
+
+
 > 本质上还是 分为4步
 > 1. 构建 数据集 dataset
 > 2. 构建 迭代器 interator 
@@ -265,14 +264,18 @@ tf.train.replica_device_setter(
 > 4. 构建 初始化 操作  init_op
 > > 初始化操作可能在运行时候被 全局一次性初始化替代
 
+### 1. 构建数据集
+
+### 2. 构建迭代器 
+构建怎么样的迭代器？
 
 
-| 迭代器类型      | 难度  |                                       应用场景 |
-| --------------- | :---: | ---------------------------------------------: |
-| one-shot        |   0   | 仅支持对整个数据集访问一遍，不需要显式的初始化 |
-| initializable   |   1   |                                       支持参数 |
-| reinitializable |   2   |                   支持多个相同数据结构的数据集 |
-| feedable        |   3   |                                   支持调用机制 |
+| 迭代器类型      | 难度  |                                                                 应用场景 |
+| --------------- | :---: | -----------------------------------------------------------------------: |
+| one-shot        |   0   | 仅支持对整个数据集访问一遍，不需要显式的初始化(不需要多写一行初始化命令) |
+| initializable   |   1   |                     支持动态数据集（通过参数或其他设置，获得动态数据集） |
+| reinitializable |   2   |                                             支持多个相同数据结构的数据集 |
+| feedable        |   3   |                                                             支持调用机制 |
 
 
 
@@ -293,7 +296,14 @@ tf.train.replica_device_setter(
             value = sess.run(next_element)
             assert i == value、
 
+
+
+
+
+
 2. initializable （可初始化的）
+   > Q: 为什么要创立 initializable的 dataset？
+   > A:当我们想要创建一个动态的dataset的时候
         
         # 构建dataset （数据集元素数量待定）
         max_value = tf.placeholder(tf.int64, shape=[])
@@ -316,6 +326,19 @@ tf.train.replica_device_setter(
         for i in range(100):
                 value = sess.run(next_element)
                 assert i == value
+
+        with tf.Session() as sess:
+                # Initialize the iterator
+                sess.run(init_op)
+                print(sess.run(next_element))
+                print(sess.run(next_element))
+                # Move the iterator back to the beginning
+                sess.run(init_op)
+                print(sess.run(next_element))
+
+        'I use Tensorflow'
+        'You use PyTorch'
+        'I use Tensorflow' # Iterator 会回到初始的位置
 3. reinitializable （可重复初始化的（一般针对多个具有相同数据结构的数据集））
         
         # 构建dataset 
@@ -797,6 +820,15 @@ sigmoid_cross_entropy(...): Creates a cross-entropy loss using tf.nn.sigmoid_cro
 softmax_cross_entropy(...): Creates a cross-entropy loss using tf.nn.softmax_cross_entropy_with_logits_v2.
 
 sparse_softmax_cross_entropy(...): Cross-entropy loss using tf.nn.sparse_softmax_cross_entropy_with_logits.
+
+# 正则化
+layer2 = tf.layers.conv2d(input, 
+    filters, 
+    kernel_size,       
+    kernel_regularizer= tf.contrib.layers.l2_regularizer(scale=0.1)) 
+... 
+l2_loss = tf.losses.get_regularization_loss() 
+loss += l2_loss 
 
 # 基于Tensorflow 的模型训练 基本步骤
 

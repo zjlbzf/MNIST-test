@@ -51,7 +51,7 @@ flags.DEFINE_integer("folds", 10, "k-flods")
 # [4] Train
 flags.DEFINE_integer("batch_size", 128, "")
 flags.DEFINE_integer("num_parallel_calls", 4, "")
-flags.DEFINE_float("learning_rate", 0.0005, "")
+flags.DEFINE_float("learning_rate", 0.001, "")
 flags.DEFINE_float("beta_1", 0.9, "")
 flags.DEFINE_float("beta_2", 0.99, "")
 flags.DEFINE_float("epsilon", 1e-8, "")

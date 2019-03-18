@@ -51,7 +51,7 @@ flags.DEFINE_integer("folds", 10, "k-flods")
 # [4] Train
 flags.DEFINE_integer("batch_size", 128, "")
 flags.DEFINE_integer("num_parallel_calls", 4, "")
-flags.DEFINE_float("learning_rate", 0.0005, "")
+flags.DEFINE_float("learning_rate", 0.00005, "")
 flags.DEFINE_float("beta_1", 0.9, "")
 flags.DEFINE_float("beta_2", 0.99, "")
 flags.DEFINE_float("epsilon", 1e-8, "")
@@ -98,12 +98,12 @@ FLAGS = flags.FLAGS
 
 par_str = "lr_%g_b1_%g_b2_%g_bsize_%g-%s" % (
     FLAGS.learning_rate, FLAGS.beta_1, FLAGS.beta_2, FLAGS.batch_size, str(uuid.uuid1()))
-FLAGS.model_save_path = os.path.join(current_dir_path, "model", par_str)
-FLAGS.predict_label_output_path = os.path.join(
+model_save_path = os.path.join(current_dir_path, "model", par_str)
+predict_label_output_path = os.path.join(
     current_dir_path, "submit", par_str+".csv")
-FLAGS.log_dir_path = os.path.join(
+LOG_DIR_PATH = os.path.join(
     current_dir_path, "log", "train", par_str)
-# FLAGS.predict_label_output_path=os.path.join(current_dir_path, "submit", par_str".h5")
+# predict_label_output_path=os.path.join(current_dir_path, "submit", par_str".h5")
 
 server = tf.train.Server.create_local_server()
 PREDICT_ON = False
@@ -119,7 +119,17 @@ def Timer(func):
     return newFunc
 
 
-def main(__):
+def main(argv):
+
+    FLAGS.learning_rate = argv[0]
+    par_str = "lr_%g_b1_%g_b2_%g_bsize_%g-%s" % (
+        FLAGS.learning_rate, FLAGS.beta_1, FLAGS.beta_2, FLAGS.batch_size, str(uuid.uuid1()))
+    print("par_str is "+par_str)
+    model_save_path = os.path.join(current_dir_path, "model", par_str)
+    predict_label_output_path = os.path.join(
+        current_dir_path, "submit", par_str+".csv")
+    LOG_DIR_PATH = os.path.join(
+        current_dir_path, "log", "train", par_str)
     """
     1 Graph build
         1.1 data
@@ -386,15 +396,15 @@ def main(__):
             allow_soft_placement=False,
             intra_op_parallelism_threads=2,
             inter_op_parallelism_threads=2)
-        summary_writer = tf.summary.FileWriter(FLAGS.log_dir_path, graph)
+        summary_writer = tf.summary.FileWriter(LOG_DIR_PATH, graph)
 
         # 1. Train
         ChiefSessionCreator = tf.train.ChiefSessionCreator(
-            config=config, checkpoint_dir=FLAGS.model_save_path)
+            config=config, checkpoint_dir=model_save_path)
         summary_hook = tf.train.SummarySaverHook(
-            save_steps=20, output_dir=FLAGS.log_dir_path, summary_writer=summary_writer, summary_op=summary_op)
+            save_steps=20, output_dir=LOG_DIR_PATH, summary_writer=summary_writer, summary_op=summary_op)
         saver_hook = tf.train.CheckpointSaverHook(
-            checkpoint_dir=FLAGS.model_save_path, save_steps=10)
+            checkpoint_dir=model_save_path, save_steps=10)
 
         with tf.train.MonitoredSession(session_creator=ChiefSessionCreator, hooks=[summary_hook, saver_hook]) as sess:
 
@@ -432,9 +442,9 @@ def main(__):
         if PREDICT_ON:
             with tf.Session(config=config) as sess:
                 saver = tf.train.import_meta_graph(
-                    FLAGS.model_save_path+"/model.ckpt-0.meta")
+                    model_save_path+"/model.ckpt-0.meta")
                 saver.restore(sess, tf.train.latest_checkpoint(
-                    FLAGS.model_save_path))
+                    model_save_path))
 
                 df_predict_label = pd.DataFrame()
                 predict_label = np.array([])
@@ -445,9 +455,22 @@ def main(__):
                 df_predict_label = pd.DataFrame(
                     {"ImageId": range(1, len(predict_label)+1), "Label": predict_label})
                 df_predict_label.to_csv(
-                    FLAGS.predict_label_output_path, index=False)
+                    predict_label_output_path, index=False)
         print("Finished")
 
 
+def process_1():
+    print("This is process 1！")
+    tf.app.run(argv=[0.0001])
+
+
+def process_2():
+    print("This is process 2！")
+    tf.app.run(argv=[0.0005])
+
+
 if __name__ == "__main__":
-    tf.app.run()
+    t1 = threading.Thread(target=process_1)
+    t2 = threading.Thread(target=process_2)
+    t1.start()
+    t2.start()

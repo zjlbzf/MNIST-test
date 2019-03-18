@@ -166,9 +166,13 @@ __init__(
 #### 6. 常用子类： tf.train.MonitoredTrainingSession()
 属于.MonitorSession() 是其子类 ,返回.MonitorSession()
 主要功能：
-1. 自动保存检查点checkpoint
-2. 自动运行保存summary（tensorboard）
-3. 方便在多设备上运行tensorflow
+
+1. 自动保存检查点checkpoint saver_hook = CheckpointSaverHook(...)
+2. 自动运行保存summary（tensorboard） summary_hook = SummarySaverHook(...)
+3. 方便在多设备上运行tensorflow  session_creator
+
+
+>注意上述的全部功能其实都是程序设定了默认值运行的。如 ，自动保存检查点checkpoint。里面靠寻找name为“global_step”的变量，来寻找global_step,所以需要在图中定义名称为global_step的变量。tf.train.MonitoredTrainingSession()作为sess, sess 里面主要是train—_op ，才能定义global_step
 
         tf.train.MonitoredTrainingSession(
         master='',
@@ -227,6 +231,8 @@ __init__(
 ### 2.1 tf.device
         tf.device(device_name_or_function)
 
+
+
 >device_name_or_function:
 >>1. 设备名称字符串 
 >> /job:<JOB_NAME>/task:<TASK_INDEX>/device:<DEVICE_TYPE>:<DEVICE_INDEX>
@@ -248,7 +254,7 @@ tf.train.replica_device_setter(
             cluster=cluster
     )
 
-
+https://blog.csdn.net/rockingdingo/article/details/55652662
 ****
 
 ## 3. 数据的输入（tf.data）
@@ -328,11 +334,11 @@ https://cs230-stanford.github.io/tensorflow-input-data.html
                 assert i == value
 
         with tf.Session() as sess:
-                # Initialize the iterator
+                # 初始化生成器
                 sess.run(init_op)
                 print(sess.run(next_element))
                 print(sess.run(next_element))
-                # Move the iterator back to the beginning
+                # 将生成器返回到初始状态
                 sess.run(init_op)
                 print(sess.run(next_element))
 
